@@ -1,0 +1,91 @@
+--track@l:Length, 0, 4000, 200, 1
+--track@a:Angle, -1280, 1280, 0, 1
+--track@alpha:Alpha, 0, 1, 1, 0.01
+--color@c1:Start,0xffffff
+--color@c2:End,0x000000
+--check@trp:Transparent,0
+--check@shadowOnly:ShadowOnly,0
+--check@fixRot:FixRotate,1
+--check@flat:Flat,0
+--label:装飾
+
+--[[pixelshader@psmain:
+Texture2D InputTexture : register(t0);
+
+cbuffer constant0 : register(b0) {
+	float l;
+	float dx;
+	float dy;
+	float alpha;
+	float3 c1;
+	float _pad1;
+	float3 c2;
+	float trp;
+};
+
+float4 psmain(float4 pos : SV_Position) : SV_Target {
+    float4 base = InputTexture[uint2(pos.xy)];
+    float4 result = base;
+
+    for (int i = 1; i <= l; i++) {
+        int2 src = int2(pos.xy - float2(dx, dy) * i);
+        float4 sample = InputTexture[src];
+        if (sample.a > 0.01) {
+            float t = i / l;
+            float3 grad = lerp(c1, c2, t);
+            float a = trp ? (1 - t) * alpha : alpha;
+            return float4(grad * a, a);
+        }
+    }
+    return result;
+}
+]]
+
+local function extract_rgb(color)
+    local r = math.floor(color / 0x10000) % 0x100
+    local g = math.floor(color / 0x100) % 0x100
+    local b = color % 0x100
+    return r / 255.0, g / 255.0, b / 255.0
+end
+
+obj.copybuffer("cache:c","obj")
+
+local r1, g1, b1 = extract_rgb(c1)
+local r2, g2, b2 = extract_rgb(c2)
+local angle = a
+if (fixRot==1) then angle = a-obj.rz end
+
+local rad=math.rad(angle)
+
+local dx = math.cos(rad)
+local dy = math.sin(rad)
+local right,left,up,down = 0,0,0,0
+if dx<0 then left = -dx*l else right = dx*l end
+if dy<0 then up = -dy*l else down = dy*l end
+obj.effect("領域拡張","上",up,"下",down,"右",right,"左",left)
+
+if l>0 then obj.pixelshader("psmain", "object", "object", {l, dx, dy, alpha, r1, g1, b1, 0, r2, g2, b2 ,trp}) end
+
+if (flat==1) then --この部分の実装はAodarumaさんのFlatShadow(https://github.com/Aodaruma/FlatShadow)に影響を受けています。問題があったら連絡ください。
+    if obj.num > 1 then
+        obj.effect("グラデーション", "color", c1, "color2", c2, "角度", angle - 90, "幅", l)
+    else
+        if dy < 0 then
+            obj.effect("グラデーション", "color", c1, "color2", c2, "角度", 180, "幅", l, "中心Y", -dy * l / 4)
+        else
+            obj.effect("グラデーション", "color", c1, "color2", c2, "角度", 0, "幅", l, "中心Y", -dy * l / 4)
+        end
+    end
+end
+
+if (shadowOnly==0) then
+	local w,h=obj.getpixel()
+    obj.setoption("dst","tmp",w,h)
+    obj.draw()
+    obj.copybuffer("obj","cache:c")
+    obj.draw((left-right)/2,(up-down)/2)
+    obj.copybuffer("obj","tmp")
+end
+
+obj.cx=obj.cx+(left-right)/2
+obj.cy=obj.cy+(up-down)/2
