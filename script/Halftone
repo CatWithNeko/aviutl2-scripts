@@ -1,0 +1,55 @@
+--track@size:Size,2, 100, 10, 1
+--track@str:Scale,0, 5, 1, 0.01
+--track@blur:Blur,0,100,0,1
+--color@ca:Color1,0xffffff
+--color@cb:Color2,0x000000
+--check@blend:Blend,1
+--track@mode:BlendMode,0, 9, 0, 1
+--track@mix:Mix,0, 1, 1, 0.01
+--label:色調整
+--[[pixelshader@psmain:
+Texture2D InputTexture : register(t0);
+
+cbuffer constant0 : register(b0) {
+	float3 ca;
+    float _pad1;
+	float3 cb;
+	float str;
+	float size;
+    float2 resolution;
+};
+
+float4 psmain(float4 pos : SV_Position) : SV_Target {
+    float4 tex = InputTexture[uint2(pos.xy)];
+    float2 cell = clamp(floor(pos.xy / size) * size + size / 2.0,0,resolution-1); //はみ出し対策のclamp
+    float2 delta = pos.xy - cell;
+    float d = length(delta);
+    float lum = dot(InputTexture[cell].rgb, float3(0.2126, 0.7152, 0.0722));
+    float r = (1.0 - lum) * (size / 2.0) * str;
+    float3 col = d > r ? ca : cb;
+    return float4(col,tex.a);
+}
+]]
+
+local function extract_rgb(color)
+    local r = math.floor(color / 0x10000) % 0x100
+    local g = math.floor(color / 0x100) % 0x100
+    local b = color % 0x100
+    return r / 255.0, g / 255.0, b / 255.0
+end
+
+local ar, ag, ab = extract_rgb(ca)
+local br, bg, bb = extract_rgb(cb)
+local w,h=obj.getpixel()
+obj.copybuffer("cache:org","obj")
+obj.effect("ぼかし","範囲",blur,"サイズ固定",1)
+obj.pixelshader("psmain","object","object",{ar,ag,ab,0,br,bg,bb,str,size,w,h})
+
+if blend==1 then --フレームバッファや部分フィルタで使うときはオフにする
+obj.setoption("dst","tmp",w,h) --サイズの引数与えてtmpバッファ初期化しちゃうとフレームバッファにかけたときに動作しなくなる 初期化せずにいくと動作はするがサイズの違うバッファを使う別スクリプトと衝突する 何
+obj.copybuffer("tmp","cache:org")
+obj.setoption("blend",mode)
+obj.draw(0,0,0,1,mix)
+obj.setoption("blend",0)
+obj.copybuffer("obj","tmp")
+end
