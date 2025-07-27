@@ -1,0 +1,19 @@
+--track@min:Min,0, 1, 0, 0.01
+--track@max:Max,0, 1, 1, 0.01
+--label:色調整
+--[[pixelshader@psmain:
+Texture2D InputTexture : register(t0);
+
+cbuffer constant0 : register(b0) {
+	float max;
+	float min;
+};
+
+float4 psmain(float4 pos : SV_Position) : SV_Target {
+    float4 tex = InputTexture[uint2(pos.xy)];
+    tex.rgb = saturate((tex.rgb - min) / (max - min));
+    return float4(tex);
+}
+]]
+
+obj.pixelshader("psmain","object","object",{max,min})
