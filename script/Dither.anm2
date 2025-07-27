@@ -1,0 +1,45 @@
+--track@th:threshold,0.0, 1.0, 0.5, 0.01
+--track@str:strength,0.0, 1.0, 0.5, 0.01
+--track@seed:seed,0,2000,0,1
+--track@size:size,1, 100, 1, 1
+--color@ca:Color1,0xffffff
+--color@cb:Color2,0x000000
+--label:色調整
+--[[pixelshader@psmain:
+Texture2D InputTexture : register(t0);
+
+cbuffer constant0 : register(b0) {
+	float th;
+	float3 ca;
+	float3 cb;
+	float str;
+	float size;
+	float seed;
+};
+
+float rand(float2 co,int seed) {
+    return frac(sin(dot(co, float2(12.9898,78.233)) + seed) * 43758.5453);
+}
+
+
+float4 psmain(float4 pos : SV_Position) : SV_Target {
+    float4 tex = InputTexture[uint2(pos.xy)];
+    float2 uv=floor(pos.xy/size);
+    float threshold = th + + (rand(uv,seed) - 0.5) * str;
+    float lum = dot(tex.rgb, float3(0.2126, 0.7152, 0.0722));
+	float3 dithered =  lum >= threshold ? ca : cb;
+    return float4(dithered, tex.a);
+}
+]]
+
+local function extract_rgb(color)
+    local r = math.floor(color / 0x10000) % 0x100
+    local g = math.floor(color / 0x100) % 0x100
+    local b = color % 0x100
+    return r / 255.0, g / 255.0, b / 255.0
+end
+
+local ar, ag, ab = extract_rgb(ca)
+local br, bg, bb = extract_rgb(cb)
+
+obj.pixelshader("psmain","object","object",{th,ar,ag,ab,br,bg,bb,str,size,seed})
