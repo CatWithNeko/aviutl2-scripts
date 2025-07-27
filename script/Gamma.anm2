@@ -1,0 +1,19 @@
+--track@gamma:Gamma,0, 10, 1, 0.01
+--track@r:R,0, 10, 1, 0.01
+--track@g:G,0, 10, 1, 0.01
+--track@b:B,0, 10, 1, 0.01
+--label:色調整
+--[[pixelshader@psmain:
+Texture2D InputTexture : register(t0);
+
+cbuffer constant0 : register(b0) {
+	float3 gamma;
+};
+float4 psmain(float4 pos : SV_Position) : SV_Target {
+    float4 tex = InputTexture[uint2(pos.xy)];
+    tex.rgb=pow(max(tex.rgb, 0.0),1/gamma); //底0以下未定義回避
+    return float4(tex);
+}
+]]
+
+obj.pixelshader("psmain","object","object",{gamma*r,gamma*g,gamma*b})
