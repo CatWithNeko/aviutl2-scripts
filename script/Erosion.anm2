@@ -1,0 +1,45 @@
+--track@str:strength,0,100,5,1
+--[[computeshader@cserosion:
+RWTexture2D<half4> buffer : register(u0);
+Texture2D texture0 : register(t0);
+
+[numthreads(1, 1, 1)]
+void cserosion(uint2 pos : SV_DispatchThreadID) {
+    float minA = 1.0;
+    float4 tex = texture0[pos];
+    for (int y = -1; y <= 1; y++) { // 3x3の周囲をチェックする
+        for (int x = -1; x <= 1; x++) {
+            int2 offset = int2(pos) + int2(x, y);
+            float4 col = texture0[offset];
+            if (col.a < minA) {
+                minA = col.a;
+            }
+        }
+    }
+
+    float4 result = float4(tex.rgb*minA, minA); //rgbにαかけるの忘れるな
+    buffer[pos] = result;
+}
+]]
+--[[pixelshader@pserosion:
+Texture2D InputTexture : register(t0);
+float4 pserosion(float4 pos : SV_Position) : SV_Target { 
+    float4 tex = InputTexture[uint2(pos.xy)];
+    float minA = 1.0;
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            int2 offset = int2(pos.xy) + int2(x, y);
+            float4 col = InputTexture[offset];
+            if (col.a < minA) {
+                minA = col.a;
+            }
+        }
+    }
+    return float4(tex.rgb*minA,minA);;
+}
+]]
+
+for i = 1 , str do
+    --obj.computeshader("cserosion","object","object",{},obj.w,obj.h) --computeshaderでやる意味なかった
+    obj.pixelshader("pserosion","object","object",{})
+end
