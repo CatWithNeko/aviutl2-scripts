@@ -1,0 +1,122 @@
+--track@blur:Blur,0,30,3,1
+--track@high:High,0,1,0.3,0.01
+--track@low:Low,0,1,0.1,0.01
+--track@connect:Connect,0,100,3,1
+--label:抽出
+--[[pixelshader@psSobel:
+Texture2D InputTexture : register(t0);
+cbuffer constant0 : register(b0) {
+	float mode;
+};
+float4 psSobel(float4 pos : SV_Position) : SV_Target { 
+    float3 lum = float3(0.299, 0.587, 0.114); // 輝度変換
+    float gx = 0;
+    float gy = 0;
+    float kernelX[9] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
+    float kernelY[9] = {-1, -2, -1, 0, 0, 0, 1, 2, 1};
+    int i = 0;
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            float3 col = InputTexture[int2(pos.xy) + int2(x, y)].rgb;
+            float gray = dot(col, lum);
+            gx += gray * kernelX[i];
+            gy += gray * kernelY[i];
+            i++;
+        }
+    }
+    const float PI = acos(-1.0);
+    float angle = (atan2(gy, gx) / (2.0 * PI)) + 0.5; // -π to π -> 0 to 1
+    float grad = sqrt(gx * gx + gy * gy); // 0 to 1
+    float4 tex = InputTexture[uint2(pos.xy)];
+    return mode ? float4(angle,angle,angle,tex.a) : float4(grad,grad,grad,tex.a);
+}
+]]
+
+--[[computeshader@cscut:
+RWTexture2D<half4> buffer : register(u0);
+Texture2D gradTexture : register(t0){};
+Texture2D angleTexture : register(t1){};
+
+[numthreads(1, 1, 1)]
+void cscut(uint2 pos : SV_DispatchThreadID) {
+    const float PI = acos(-1.0);
+    float theta = (angleTexture[pos].r-0.5)*2*PI;
+    float2 dir;
+    if (theta < PI / 8) {
+        dir = float2(1, 0);    // 横
+    } else if (theta < 3 * PI / 8) {
+        dir = float2(1, 1);    // 斜め45
+    } else if (theta < 5 * PI / 8) {
+        dir = float2(0, 1);    // 縦
+    } else {
+        dir = float2(-1, 1);   // 斜め135
+    }
+    float g = gradTexture[pos].r;
+    float g1 = gradTexture[pos + dir].r;
+    float g2 = gradTexture[pos - dir].r;
+    if (g >= g1 && g >= g2) {
+        buffer[pos] = g;  // 極大 → 残す
+    } else {
+        buffer[pos] = 0;  // 抑制
+    }  
+}
+]]
+
+--[[computeshader@csclassify:
+RWTexture2D<half4> buffer : register(u0);
+Texture2D texture0 : register(t0){};
+
+cbuffer constant0 : register(b0) {
+	float hi;
+    float lo;
+};
+
+[numthreads(1, 1, 1)]
+void csclassify(uint2 pos : SV_DispatchThreadID) {
+    float g = buffer[pos].r;
+    if (g > hi) {
+        buffer[pos] = float4(1,1,1,1);  // 強
+    } else if (g > lo) {
+        buffer[pos] = float4(0.5,0.5,0.5,1);  // 弱
+    } else {
+        buffer[pos] = float4(0,0,0,1);  // 抑制
+    }
+}
+]]
+
+--[[computeshader@csconnect:
+RWTexture2D<half4> buffer : register(u0);
+Texture2D prev : register(t0){};  // 前の状態
+
+[numthreads(1, 1, 1)]
+void csconnect(uint2 pos : SV_DispatchThreadID) {
+    float4 col = prev[pos];
+    if (col.r != 0.5) return;  // 弱エッジのみ対象
+    [unroll]
+    for (int y = -1; y <= 1; y++) {
+        [unroll]
+        for (int x = -1; x <= 1; x++) {
+            if (x == 0 && y == 0) continue;
+            uint2 np = pos + uint2(x, y);
+            float4 ncol = prev[np];
+            if (ncol.r == 1.0) {
+                buffer[pos] = float4(1,1,1,1);  // 昇格
+                return;
+                
+            }
+        }
+    }
+}
+]]
+
+
+obj.effect("ぼかし","範囲",blur,"サイズ固定",1) --ぼかしは標準エフェクトに丸投げする
+obj.copybuffer("tempbuffer","object")
+obj.pixelshader("psSobel","tempbuffer","object",{1}) --エッジ抽出(勾配)をかけたものをtempbufferに置いておく
+obj.effect("エッジ抽出","輝度エッジを抽出",1) --obj.pixelshader("psSobel","object","object",{0})でやっても変わらない(たぶん)
+obj.computeshader("cscut","object",{"object","tempbuffer"},{},obj.w,obj.h) --エッジを薄くする
+obj.computeshader("csclassify","object","object",{high,low},obj.w,obj.h) --強いエッジと弱いエッジを分ける
+for i = 1, connect do --強いエッジに隣接する弱いエッジを強いエッジに昇格
+    obj.computeshader("csconnect","object","object",{},obj.w,obj.h)
+end
+obj.effect("ルミナンスキー","基準輝度",3000,"輝度範囲",0) --透過する(手抜き)
