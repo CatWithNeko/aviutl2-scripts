@@ -9,6 +9,9 @@ beta4で動作確認
 
 
 ## 導入・削除
+
+scriptフォルダの中身をDLする
+
 `aviutl2.exe`のあるフォルダに`data`フォルダがある場合、`data\script`内またはその子フォルダ内に置く/消す
 
 `aviutl2.exe`のあるフォルダに`data`フォルダがない場合、`C:\ProgramData\aviutl2\Script`内またはその子フォルダ内に置く/消す
@@ -59,7 +62,12 @@ RGBまたは全体にかかるガンマ補正
 
 輪郭を削るだけのシンプルなエフェクト 縁取りの逆
 
+## Canny
+勘で作ったCannyエッジ抽出
+
+ちゃんとCannyになってるのかわからない
+
 ## 更新履歴
 2025/7/28 Googleドライブに置いていたものをgithubに移した
 
-2025/8/01 Erosionを追加
+2025/8/01 Erosionを追加 Cannyを追加
