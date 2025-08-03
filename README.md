@@ -67,7 +67,15 @@ RGBまたは全体にかかるガンマ補正
 
 ちゃんとCannyになってるのかわからない
 
+## Chromatic Aberration
+
+おきらく色収差
+
+RGBバラして拡大するだけ
+
 ## 更新履歴
 2025/7/28 Googleドライブに置いていたものをgithubに移した
 
 2025/8/01 Erosionを追加 Cannyを追加
+
+2025/8/03 Chromatic Aberrationを追加 Lensを修正(プロパティ変更・追加)
