@@ -1,0 +1,45 @@
+--track@xtra:X,-4000,4000,0,1
+--track@ytra:Y,-4000,4000,0,1
+--track@cxtra:CenterX,-4000,4000,0,1
+--track@cytra:CenterY,-4000,4000,0,1
+--track@zoomtra:Zoom,0,200,100,0.1
+--track@channel:Channel,0,2,1,1
+--check@bi:Bidrectional,0
+
+--[[pixelshader@psmain:
+Texture2D tex : register(t0);
+cbuffer constant0 : register(b0) {
+    float2 size;
+	float2 off;
+	float2 center;
+	float zoom;
+    float channel; //0:R,1:G,2:B intにするとなんか通らない場合がある
+    bool bi; //こっちはなんかboolでよかった……
+};
+
+float4 psmain(float4 pos : SV_Position) : SV_Target {
+    float2 uv=pos.xy-(size.xy/2);
+    float2 rel1=(uv-center)/zoom+center;
+    float2 rel2=bi ? (uv-center)*zoom+center : (uv-center)/((zoom-1)/2+1)+center; //中間
+    float2 pos1=rel1+(size/2);
+    float2 pos2=rel2+(size/2);
+    float3 rgb=float3(0,0,0);
+
+    float4 col=tex[int2(pos.xy)];  //ズレなし
+    float4 colp=tex[int2(pos1-off)]; //ズレ正
+    float4 colm=tex[int2(pos2+off)]; //ズレ負
+    if (channel==0) { //R
+        rgb=float3(col.r,colp.g,colm.b);
+    } else if (channel==1) { //G
+        rgb=float3(colp.r,col.g,colm.b);
+    } else { //B
+        rgb=float3(colp.r,colm.g,col.b);
+    }
+    return float4(rgb,col.a);
+}
+]]
+local w,h=obj.getpixel()
+obj.pixelshader("psmain","object","object",{w,h,xtra,ytra,cxtra,cytra,zoomtra/100,channel,bi})
+
+--
+--レンズディストーションとかもつけられはするけどオプションの整理がめんどくさくてやめた 凝った色収差は赤青緑のグラデーションを乗算でかけたフレームバッファ3枚を可算合成すれば手動で作れると思います……
