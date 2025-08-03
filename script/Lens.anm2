@@ -1,38 +1,31 @@
---track@d:Distortion,-10.0,10.0,0.0,0.01
---track@cx:X,-1.0, 1.0, 0.0, 0.1
---track@cy:Y,-1.0, 1.0, 0.0, 0.1
+--track@d:Distortion,-10,10,0,0.01
+--track@cx:X,-4000, 4000, 0, 1
+--track@cy:Y,-4000, 4000, 0, 1
+--track@pow:Pow,0.1,10,2,0.01
+--track@lim:Limit,-10,0,-0.5,0.01
 --label:変形
 --[[pixelshader@psmain:
-Texture2D InputTexture : register(t0);
-
+Texture2D tex : register(t0);
 cbuffer constant0 : register(b0) {
     float d;
-    float _pad1;
+    float p;
     float2 resolution;
-	float2 center;
-	float3 _pad2;
+	float2 offset;
+    float2 _pad1;
+    float lim;
 };
-
 float4 psmain(float4 pos : SV_Position) : SV_Target {
-	float2 offset = center;
-    float2 uv = pos.xy / resolution;
-    float2 centered = (uv * 2.0 - 1.0) - offset;
-	float cd = max(d, -1.0);	
-	float r = length(centered);
-	float denom = 1.0 - cd * r * r;
-	denom = max(denom, 0.001);
-	float zoom = (d < -1.0) ? 1.0 + pow(max(-d - 1.0, 0.0),1.4) : 1.0;
-    float2 distorted = (centered / denom) / zoom;
-    
-    float2 final_uv = (distorted + offset + 1.0) * 0.5;
-
-    if (final_uv.x < 0.0 || final_uv.x > 1.0 || final_uv.y < 0.0 || final_uv.y > 1.0) {
-        return float4(0, 0, 0, 0);
-    }
-
-    float2 texcoord = final_uv * resolution;
-    return InputTexture[uint2(texcoord)];
+    float2 centered = pos.xy - (resolution/2) - offset; //中心変換
+	float r = length(centered/resolution);
+	float denom = 1-pow(r,p)*max(d,lim)*10;
+    denom = max(denom, 0.001); //でかすぎると画面外に変なのが発生
+	float zoom = (d < lim) ? 1.0 + pow(max(-d +lim, 0.0),1.4) : 1.0; //歪みを小さくしすぎると破綻するので拡大でごまかす 下限をどこに設定すればいいかわからないからトラックバーに置いた
+    float2 distorted = centered/denom/zoom;h
+    float2 texcoord = distorted+(resolution/2)+offset;
+    return tex[int2(texcoord)];
 }
 ]]
+local w,h=obj.getpixel()
+obj.pixelshader("psmain", "object", "object", {d,pow,w,h,cx,cy,0,0,lim})
 
-obj.pixelshader("psmain", "object", "object", {d, 0, obj.w, obj.h, cx, cy, 0, 0, 0})
+--縦横比とかつけたいけど領域拡張で済む問題だしまあええか……
