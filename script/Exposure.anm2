@@ -1,0 +1,23 @@
+--track@exposure:Exposure,0,10,1,0.01
+--track@gamma:Gamma,0,10,1,0.01
+--track@offset:Offset,-1,1,0,0.01
+--label:色調整
+--[[pixelshader@liftgammagain:
+Texture2D InputTexture : register(t0);
+
+cbuffer constant0 : register(b0) {
+	float exposure;
+	float gamma;
+	float offset;
+};
+
+float4 liftgammagain(float4 pos : SV_Position) : SV_Target {
+    float4 tex = InputTexture[uint2(pos.xy)];
+    tex.rgb *= exposure;
+    tex.rgb = pow(saturate(tex.rgb),1/gamma);
+    tex.rgb=tex.rgb+float3(offset,offset,offset);
+    return float4(tex);
+}
+]]
+
+obj.pixelshader("liftgammagain","object","object",{exposure,gamma,offset})
