@@ -31,15 +31,9 @@ float4 psmain(float4 pos : SV_Position) : SV_Target {
 }
 ]]
 
-local function extract_rgb(color)
-    local r = math.floor(color / 0x10000) % 0x100
-    local g = math.floor(color / 0x100) % 0x100
-    local b = color % 0x100
-    return r / 255.0, g / 255.0, b / 255.0
-end
-
-local ar, ag, ab = extract_rgb(ca)
-local br, bg, bb = extract_rgb(cb)
+local ar, ag, ab = RGB(ca)
+local br, bg, bb = RGB(cb)
+ar,ag,ab,br,bg,bb=ar/255,ag/255,ab/255,br/255,bg/255,bb/255
 local w,h=obj.getpixel()
 obj.copybuffer("cache:org","obj")
 obj.effect("ぼかし","範囲",blur,"サイズ固定",1)
