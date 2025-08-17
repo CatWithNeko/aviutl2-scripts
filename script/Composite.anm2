@@ -22,6 +22,7 @@ end
 obj.copybuffer("object","tempbuffer")
 obj.setoption("drawtarget","framebuffer")
 obj.ox,obj.oy=px,py
-
+obj.setoption("blend","none")
 obj.draw() --framebufferでdraw()すると以降のフィルタ発動を抑止できる
+
 
