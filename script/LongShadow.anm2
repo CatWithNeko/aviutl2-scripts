@@ -41,17 +41,11 @@ float4 psmain(float4 pos : SV_Position) : SV_Target {
 }
 ]]
 
-local function extract_rgb(color)
-    local r = math.floor(color / 0x10000) % 0x100
-    local g = math.floor(color / 0x100) % 0x100
-    local b = color % 0x100
-    return r / 255.0, g / 255.0, b / 255.0
-end
-
 obj.copybuffer("cache:c","obj")
 
-local r1, g1, b1 = extract_rgb(c1)
-local r2, g2, b2 = extract_rgb(c2)
+local r1, g1, b1 = RGB(c1)
+local r2, g2, b2 = RGB(c2)
+r1,g1,b1,r2,g2,b2=r1/255,g1/255,b1/255,r2/255,g2/255,b2/255
 local angle = a
 if (fixRot==1) then angle = a-obj.rz end
 
