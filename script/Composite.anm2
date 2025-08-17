@@ -1,8 +1,5 @@
---このエフェクト以降にかけたエフェクトと、このエフェクト以前の画像を合成する
---このエフェクト以降にサイズが変わるエフェクト(領域拡張やオフスクリーン描画)をかけると座標がバグるのでそれは手前でかけましょう
-
 --track@opc:Opacity,0, 100, 100, 0.01
---select@bmode:Blend Mode,none=0,add=1,sub=2,mul=3,screen=4,overlay=5,light=6,dark=7,rightness=8,chroma=9,shadow=10,light_dark=11,diff=12,alpha_add=20,alpha_max=21,alpha_sub=22,alpha_add2=25
+--select@bmode:Blend Mode,none=0,add=1,sub=2,mul=3,screen=4,overlay=5,light=6,dark=7,brightness=8,chroma=9,shadow=10,light_dark=11,diff=12,alpha_add=20,alpha_max=21,alpha_sub=22,alpha_add2=25
 --check@rev:Reverse,0
 
 local w,h=obj.getpixel()
@@ -27,3 +24,4 @@ obj.setoption("drawtarget","framebuffer")
 obj.ox,obj.oy=px,py
 
 obj.draw() --framebufferでdraw()すると以降のフィルタ発動を抑止できる
+
