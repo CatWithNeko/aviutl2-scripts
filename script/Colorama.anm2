@@ -1,0 +1,88 @@
+--track@shift:Shift,-5000,5000,0,0.1
+--track@cycle:Cycle,1,50,1,1
+--track@step:Step,2,6,6,1
+--color@_c1:Color1,0xff0000
+--color@_c2:Color2,0xffff00
+--color@_c3:Color3,0x00ff00
+--color@_c4:Color4,0x00ffff
+--color@_c5:Color5,0x0000ff
+--color@_c6:Color6,0xff00ff
+--select@bmode:Blend Mode,none=0,add=1,sub=2,mul=3,screen=4,overlay=5,light=6,dark=7,brightness=8,chroma=9,shadow=10,light_dark=11,diff=12,alpha_add=20,alpha_max=21,alpha_sub=22,alpha_add2=25
+--select@lmode:Lum Mode,bt-601=0,bt-709=1,bt-2020=2,mean=3
+--track@mix:mix,0,100,100,0.1
+--check@inv:Invert,0
+--label:色調整
+--[[pixelshader@psmain:
+Texture2D InputTexture : register(t0);
+cbuffer constant0 : register(b0) {
+    float2 resolution;
+    float shift;
+    float cycle;
+    float3 c1;
+    float _pad1;
+    float3 c2;
+    float _pad2;
+    float3 c3;
+    float _pad3;
+    float3 c4;
+    float _pad4;
+    float3 c5;
+    float _pad5;
+    float3 c6;
+    float _pad6;
+    float step;
+    float lmode;
+};
+float luminance(float3 col, int mode){
+    float3 weights=float3(0.299,0.587,0.114); // BT.601
+    switch (mode) {
+        case 1: // BT.709
+            weights=float3(0.2126, 0.7152, 0.0722);
+            break;
+        case 2: // BT.2020
+            weights=float3(0.2627, 0.6780, 0.0593);
+            break;
+        case 3: //mean
+            weights=float3(0.3333,0.3333,0.3333);
+            break;
+    }
+    return saturate(dot(col, weights));
+}
+float4 psmain(float4 pos : SV_Position) : SV_Target {
+    float4 tex = InputTexture[uint2(pos.xy)];
+    float3 colors[7] = {c1,c2,c3,c4,c5,c6,c1};
+    float phase = frac(luminance(tex.rgb,lmode)*cycle+shift)*step; //0~1 -> 0~step
+
+    int seg = (int)floor(phase);
+    float d = frac(phase);
+
+    float3 ca = colors[seg];
+    float3 cb = colors[seg+1<step?seg+1:0];
+    float3 col = lerp(ca, cb, d);
+
+    return float4(col,tex.a);
+}
+]]
+
+local c={}
+c[1]=_c1
+c[2]=_c2
+c[3]=_c3
+c[4]=_c4
+c[5]=_c5
+c[6]=_c6
+
+local r,g,b={},{},{}
+for i=1,6 do
+    r[i],g[i],b[i]=RGB(c[i])
+    r[i],g[i],b[i]=r[i]/255,g[i]/255,b[i]/255
+end
+local w,h=obj.getpixel()
+
+obj.copybuffer("tmp","obj")
+if inv==1 then obj.effect("反転","輝度反転",1) end
+obj.pixelshader("psmain","object","object",{w,h,shift/100,cycle, r[1],g[1],b[1],0, r[2],g[2],b[2],0, r[3],g[3],b[3],0, r[4],g[4],b[4],0, r[5],g[5],b[5],0, r[6],g[6],b[6],0,step,lmode})
+obj.setoption("drawtarget","tmp")
+obj.setoption("blend",bmode)
+obj.draw(0,0,0,1,mix/100)
+obj.copybuffer("obj","tmp")
