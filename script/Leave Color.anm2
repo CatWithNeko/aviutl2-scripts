@@ -1,0 +1,47 @@
+--track@th:Threshold,0,100,50,0.1
+--color@col:Color,0xffffff
+--select@lum_mode:Lum Mode=1,BT.601=0,BT.709=1,BT.2020=2,Mean=3
+--check@inv:Invert,0
+--label:色調整
+--[[pixelshader@psmain:
+Texture2D InputTexture : register(t0);
+
+cbuffer constant0 : register(b0) {
+	float th;
+	float3 col;
+    float lum_mode;
+    float inv;
+};
+
+float luminance(float3 col, int mode){
+    float3 weights=float3(0.299,0.587,0.114); // BT.601
+    switch (mode) {
+        case 1: // BT.709
+            weights=float3(0.2126, 0.7152, 0.0722);
+            break;
+        case 2: // BT.2020
+            weights=float3(0.2627, 0.6780, 0.0593);
+            break;
+        case 3: //mean
+            weights=float3(0.3333,0.3333,0.3333);
+            break;
+    }
+    return dot(col, weights);
+}
+
+
+float4 psmain(float4 pos : SV_Position) : SV_Target {
+    float4 tex = InputTexture[uint2(pos.xy)];
+    float sim=dot(normalize(tex.rgb),normalize(col));
+    if (inv==0 && sim<th || inv==1 && sim>th){
+        float v = luminance(tex.rgb,lum_mode);
+        tex.rgb=float3(v,v,v);
+    }
+    return float4(tex);
+}
+]]
+
+local r, g, b = RGB(col)
+r,g,b=r/255,g/255,b/255
+
+obj.pixelshader("psmain","object","object",{th/100,r,g,b,lum_mode,inv})
