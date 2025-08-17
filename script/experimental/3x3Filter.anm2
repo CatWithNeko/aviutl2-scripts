@@ -1,0 +1,35 @@
+--value@_1:1,{1,0,0}
+--value@_2:2,{0,0,0}
+--value@_3:3,{0,0,-1}
+--track@mult:Mult,0,100,100,0.01
+--[[pixelshader@psmain:
+Texture2D tex : register(t0);
+cbuffer constant0 : register(b0) {
+	float2 resolution;
+    float mult;
+    float _pad1;
+    float3 kernel[3];
+};
+float4 psmain(float4 pos : SV_Position) : SV_Target { 
+    float4 col=tex[uint2(pos.xy)];
+    float3 sum = 0;
+    for (int i = -1; i <= 1; i++){
+        for (int j = -1; j <= 1; j++){
+            float4 sample = tex[int2(pos.xy + float2(i, j))];
+            sum += sample.rgb*kernel[i+1][j+1];
+        }
+    }
+    return float4(sum*mult,col.a);
+}
+]]
+
+local w,h=obj.getpixel()
+local kernel={}
+kernel[1]=_1
+kernel[2]=_2
+kernel[3]=_3
+obj.pixelshader("psmain","object","object",
+    {w,h,mult/100,0,
+    kernel[1][1],kernel[1][2],kernel[1][3],
+    kernel[2][1],kernel[2][2],kernel[2][3],
+    kernel[3][1],kernel[3][2],kernel[3][3]})
