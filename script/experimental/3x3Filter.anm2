@@ -15,7 +15,7 @@ float4 psmain(float4 pos : SV_Position) : SV_Target {
     for (int i = -1; i <= 1; i++){
         for (int j = -1; j <= 1; j++){
             float4 sample = tex[int2(pos.xy + float2(i, j))];
-            sum += sample.rgb*kernel[i+1][j+1];
+            sum += sample.rgb*kernel[j+1][i+1];
         }
     }
     return float4(sum*mult,col.a);
