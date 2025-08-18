@@ -47,7 +47,7 @@ RGBまたは全体にかかるガンマ補正
 
 ネガポジ反転にも使える
 
-## Exposure
+### Exposure
 
 露出・ガンマ・オフセットの補正をかける
 
@@ -64,20 +64,20 @@ RGBまたは全体にかかるガンマ補正
 
 フレームバッファや部分フィルタではBlendモードが動作しない既知の不具合があるので、そのときはチェックボックスでオフにしてください
 
-## Erosion
+### Erosion
 
 輪郭を削るだけのシンプルなエフェクト 縁取りの逆
 
-## Canny
+### Canny
 勘で作ったCannyエッジ抽出
 
 ちゃんとCannyになってるのかわからない
 
-## Chromatic Aberration
+### Chromatic Aberration
 
-おきらく色収差
+簡易色収差
 
-RGBバラして拡大するだけ
+RGBバラして拡大する
 
 ## Composite
 
@@ -97,6 +97,11 @@ RGBバラして拡大するだけ
 
 特定の色のみ/以外をグレースケールにする
 
+## Turbulent
+
+簡易タービュレントディスプレイス
+
+
 ## 更新履歴
 2025/7/28 Googleドライブに置いていたものをgithubに移した
 
@@ -105,6 +110,8 @@ RGBバラして拡大するだけ
 2025/8/03 Chromatic Aberrationを追加 Lensを修正(プロパティ変更・追加)
 
 2025/8/16 Composite追加 Leave Color追加
+
+2025/8/18 3x3Filter追加 Turbulent追加
 
 2025/8/17 Colorama追加 色指定を使うスクリプトの冗長なコードを修正
 
