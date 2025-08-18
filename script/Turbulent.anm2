@@ -20,12 +20,8 @@ float4 psmain(float4 pos : SV_Position) : SV_Target {
 --amountを大きくしすぎるとバグる(0~1000なら多分平気)
 --シーンにノイズ置いてディスプレイスメントマップしたほうが自由度は高いです これは気軽に使う用
 
-local max_x,max_y = obj.getinfo("image_max")
-local w,h=obj.getpixel()
 if expansion==1 then obj.effect("領域拡張","上",amount,"下",amount,"右",amount,"左",amount) end
-w,h=obj.getpixel()
-
-w,h=math.min(w,max_x),math.min(h,max_y)
+local w,h=obj.getpixel()
 
 local ox,oy=obj.ox,obj.oy
 
@@ -46,5 +42,6 @@ obj.setoption("drawtarget","tempbuffer",w,h)
 obj.draw()
 obj.copybuffer("obj","tempbuffer")
 obj.ox,obj.oy=ox,oy
+
 
 obj.pixelshader("psmain","object",{"cache:org","tempbuffer"},{w,h,amount})
