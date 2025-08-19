@@ -1,0 +1,27 @@
+--track@maxmin:Max/Min,0,1,0,1
+--track@scale:Scale,0,100,1,1
+--track@angle:Angle,-1000,1000,0,0.1
+--[[pixelshader@psmain:
+Texture2D tex : register(t0);
+cbuffer constant0 : register(b0) {float2 resolution;float scale;float maxmin; float rad;};
+float4 psmain(float4 pos : SV_Position) : SV_Target { 
+    float4 col=tex[uint2(pos.xy)];
+    float3 m = col.rgb;
+    for (int i = -scale; i <= scale; i++){
+        for (int j = -scale; j <= scale; j++){
+            float2 d=float2(i*sin(rad)-j*cos(rad),i*cos(rad)+j*sin(rad)); //(i,j)のrad回転
+            float4 sample = tex[int2(clamp(pos.xy + d,int2(0,0),resolution-1))];
+            if (maxmin==1) {
+                m=sample.rgb>m?sample.rgb:m;
+            }else{
+                m=sample.rgb<m?sample.rgb:m;
+            }
+        }
+    }
+    return float4(m,col.a);
+}
+]]
+
+local w,h=obj.getpixel()
+obj.pixelshader("psmain","object","object",{w,h,scale,1-maxmin*2,math.rad(angle)})
+--scale上げすぎるとかなり重くなる computeshaderでうまいことやったら軽くなりそうだけど挫折……
