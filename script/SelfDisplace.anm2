@@ -1,0 +1,82 @@
+--track@amtX:Off X,-4000,4000, 0, 0.01
+--track@amtY:Off Y,-4000,4000, 0, 0.01
+--track@rot:Rotate,-4000,4000,0,0.1
+--track@zoom:Zoom,0,4000,100,0.1
+--track@zoomX:Zoom X,0,1,1,0.01
+--track@zoomY:Zoom Y,0,1,1,0.01
+--track@blur:Blur,0,1000,15,0.1
+--track@relR:Rel R,0,1,0.5,0.01
+--track@relG:Rel G,0,1,0.75,0.01
+--track@relB:Rel B,0,1,1,0.01
+--select@mode:Mode=0,Luminance (BT.601)=0,Luminance (BT.709)=1,Luminance (BT.2020)=2,Mean=3
+--check@inv:Invert,0
+--check@bi:Bidirectional,0
+--label:変形
+--[[pixelshader@psmain:
+cbuffer constant0 : register(b0) { float2 resolution; float2 off; float rad;float2 zoom;float bi;float4 relRGBA;float mode;};
+
+float luminance(float3 col, int mode){
+    float3 weights=float3(0.299,0.587,0.114); // BT.601
+    switch (mode) {
+        case 1: // BT.709
+            weights=float3(0.2126, 0.7152, 0.0722);
+            break;
+        case 2: // BT.2020
+            weights=float3(0.2627, 0.6780, 0.0593);
+            break;
+        case 3: //mean
+            weights=float3(0.3333,0.3333,0.3333);
+            break;
+    }
+    return dot(col, weights);
+}
+
+float2 rotate2(float2 uv, float rad){
+    return float2(uv.x*cos(rad)-uv.y*sin(rad),uv.x*sin(rad)+uv.y*cos(rad));
+}
+
+Texture2D tex : register(t0);
+Texture2D map : register(t1);
+SamplerState smp : register(s0);
+
+float2 UVDisplacement(float2 uv,float2 resolution,float d,float2 offset,float rad,float2 zoom){
+    float aspect=resolution.x/resolution.y;
+    float2 uv_centered=uv-0.5;
+    //回転する
+    uv_centered.x *= aspect;
+    float2 rotated_uv=rotate2(uv_centered,-rad*d);
+    rotated_uv.x/=aspect;
+    //拡大する
+    float2 zoomed_uv=rotated_uv/(1+(zoom-1)*d);
+    //移動する
+    float2 off_uv=offset*d/resolution;
+    float2 final_uv=zoomed_uv+off_uv+0.5;
+    return final_uv;
+}
+
+float4 psmain(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target { 
+    float aspect=resolution.x/resolution.y;
+    float d=luminance(map.Sample(smp, uv).rgb,mode);
+    if (bi==1){d=d*2-1;} //双方向の場合0~1->-1~1に変換
+    float4 dist=relRGBA*d;
+    float2 uv_r=UVDisplacement(uv,resolution,dist.r,off,rad,zoom);
+    float2 uv_g=UVDisplacement(uv,resolution,dist.g,off,rad,zoom);
+    float2 uv_b=UVDisplacement(uv,resolution,dist.b,off,rad,zoom);
+    float2 uv_a=UVDisplacement(uv,resolution,d,off,rad,zoom);
+    float4 col;
+    col.r=tex.Sample(smp, uv_r).r;
+    col.g=tex.Sample(smp, uv_g).g;
+    col.b=tex.Sample(smp, uv_b).b;
+    col.a=tex.Sample(smp, uv_a).a;
+    return col;
+}
+]]
+
+
+local w,h=obj.getpixel()
+
+obj.copybuffer("cache:org","obj")
+obj.effect("ぼかし","範囲",blur,"サイズ固定",1)
+if inv==1 then obj.effect("反転","輝度反転",1) end
+
+obj.pixelshader("psmain","object",{"cache:org","object"},{w,h,amtX,amtY,math.rad(rot),1+zoomX*(zoom/100-1),1+(zoom/100-1)*zoomY,bi,relR,relG,relB,1,mode})
