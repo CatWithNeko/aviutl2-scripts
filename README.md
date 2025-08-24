@@ -122,10 +122,10 @@ RGBを分離して変形量を調整できる つまり輝度基準の色ズレ
 
 2025/8/16 Composite追加 Leave Color追加
 
-2025/8/25 SelfDisplace追加
-
 2025/8/17 Colorama追加 色指定を使うスクリプトの冗長なコードを修正
 
 2025/8/18 3x3Filter追加 Turbulent追加
 
 2025/8/19 MaxMin追加
+
+2025/8/25 SelfDisplace追加
