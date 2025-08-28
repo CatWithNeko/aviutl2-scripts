@@ -1,0 +1,53 @@
+--label:変形
+--track@amp:Amp,-4000, 4000, 100, 0.1
+--track@length:Length,1, 4000, 100, 0.1
+--track@phase:Phase,-40000, 40000, 0, 0.1
+--track@speed:speed,-4000, 4000, 0, 0.1
+--track@angle:Angle,-3600, 3600, 0, 0.1
+--check@expand:Expand,1
+--select@wavetype:Type=0,sin=0,saw=1,tri=2,square=3
+
+--[[pixelshader@psmain:
+Texture2D tex0 : register(t0);
+cbuffer constant0 : register(b0) {
+    float2 resolution;float height;float width;
+    float phaseOff;float2 dir;float wavetype;};
+SamplerState smp0 : register(s0);
+float sawWave(float t){
+    return frac(t/(2*3.14159265))*2-1;
+}
+float triWave(float t){
+    return (1-abs(sawWave(t)))*2-1;
+}
+float squareWave(float t) {
+    return sign(sin(t)); // -1 or +1
+}
+float4 psmain(float4 pos : SV_Position,float2 uv:TEXCOORD0) : SV_Target {
+    float2 perp = float2(-dir.y, dir.x); //法線ベクトル
+    float phase=dot(pos.xy - resolution * 0.5, dir) * (2 * 3.14159265 / width) + phaseOff;
+    float wave = sin(phase);
+    switch (int(wavetype)) {
+        case 1:
+            wave = sawWave(phase);
+            break;
+        case 2:
+            wave = triWave(phase);
+            break;
+        case 3:
+            wave = squareWave(phase);
+            break;
+        default:
+            wave = sin(phase);
+            break;
+    }
+    float2 offset = perp * height * wave;
+    float4 color = tex0.Sample(smp0, uv + offset / resolution, 0);
+    return color;
+}
+]]
+
+local rad=math.rad(angle)
+local dx,dy=math.cos(rad),math.sin(rad)
+if expand==1 then obj.effect("領域拡張","上",math.abs(amp*dx),"下",math.abs(amp*dx),"右",math.abs(amp*dy),"左",math.abs(amp*dy)) end
+local w,h=obj.getpixel()
+obj.pixelshader("psmain","object","object",{w,h,amp,length,math.rad(phase+speed*obj.time),dx,dy,wavetype})
