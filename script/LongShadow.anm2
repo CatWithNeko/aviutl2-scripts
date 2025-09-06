@@ -1,22 +1,20 @@
+--label:装飾
 --track@l:Length, 0, 4000, 200, 1
 --track@a:Angle, -1280, 1280, 0, 1
 --track@alpha:Alpha, 0, 1, 1, 0.01
 --color@c1:Start,0xffffff
+--check@grad:Grad,1
 --color@c2:End,0x000000
 --check@trp:Transparent,0
 --check@shadowOnly:ShadowOnly,0
 --check@fixRot:FixRotate,1
 --check@flat:Flat,0
---label:装飾
 
 --[[pixelshader@psmain:
 Texture2D InputTexture : register(t0);
 
 cbuffer constant0 : register(b0) {
-	float l;
-	float dx;
-	float dy;
-	float alpha;
+	float l; float2 delta; float alpha;
 	float3 c1;
 	float _pad1;
 	float3 c2;
@@ -26,9 +24,8 @@ cbuffer constant0 : register(b0) {
 float4 psmain(float4 pos : SV_Position) : SV_Target {
     float4 base = InputTexture[uint2(pos.xy)];
     float4 result = base;
-
     for (int i = 1; i <= l; i++) {
-        int2 src = int2(pos.xy - float2(dx, dy) * i);
+        int2 src = int2(pos.xy - delta * i);
         float4 sample = InputTexture[src];
         if (sample.a > 0.01) {
             float t = i / l;
@@ -41,14 +38,23 @@ float4 psmain(float4 pos : SV_Position) : SV_Target {
 }
 ]]
 
-obj.copybuffer("cache:c","obj")
+--[[pixelshader@psmix:
+Texture2D t0 : register(t0);
+Texture2D t1 : register(t1);
+float4 psmix(float4 pos : SV_Position) : SV_Target {
+    float4 c0 = t0[uint2(pos.xy)];
+    float4 c1 = t1[uint2(pos.xy)];
+    return float4(c0*(1-c1.a)+c1);
+}
+]]
 
+obj.copybuffer("cache:_longshadow_org","obj")
+if grad==0 then c2=c1 end
 local r1, g1, b1 = RGB(c1)
 local r2, g2, b2 = RGB(c2)
-r1,g1,b1,r2,g2,b2=r1/255,g1/255,b1/255,r2/255,g2/255,b2/255
+
 local angle = a
 if (fixRot==1) then angle = a-obj.rz end
-
 local rad=math.rad(angle)
 
 local dx = math.cos(rad)
@@ -58,7 +64,7 @@ if dx<0 then left = -dx*l else right = dx*l end
 if dy<0 then up = -dy*l else down = dy*l end
 obj.effect("領域拡張","上",up,"下",down,"右",right,"左",left)
 
-if l>0 then obj.pixelshader("psmain", "object", "object", {l, dx, dy, alpha, r1, g1, b1, 0, r2, g2, b2 ,trp}) end
+if l>0 then obj.pixelshader("psmain", "object", "object", {l, dx, dy, alpha, r1/255,g1/255,b1/255, 0, r2/255,g2/255,b2/255 ,trp}) end
 
 if (flat==1) then --この部分の実装はAodarumaさんのFlatShadow(https://github.com/Aodaruma/FlatShadow)に影響を受けています。問題があったら連絡ください。
     if obj.num > 1 then
@@ -72,14 +78,7 @@ if (flat==1) then --この部分の実装はAodarumaさんのFlatShadow(https://
     end
 end
 
-if (shadowOnly==0) then
-	local w,h=obj.getpixel()
-    obj.setoption("dst","tmp",w,h)
-    obj.draw()
-    obj.copybuffer("obj","cache:c")
-    obj.draw((left-right)/2,(up-down)/2)
-    obj.copybuffer("obj","tmp")
-end
+if (shadowOnly==0) then obj.pixelshader("psmix","object",{"object","cache:_longshadow_org"}) end
 
 obj.cx=obj.cx+(left-right)/2
 obj.cy=obj.cy+(up-down)/2
