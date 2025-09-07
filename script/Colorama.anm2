@@ -60,7 +60,7 @@ float4 psmain(float4 pos : SV_Position) : SV_Target {
     float3 cb = colors[seg+1<step?seg+1:0];
     float3 col = lerp(ca, cb, d);
 
-    return float4(col,tex.a);
+    return float4(col,1)*tex.a;
 }
 ]]
 
@@ -87,3 +87,4 @@ obj.setoption("blend",bmode)
 obj.draw(0,0,0,1,mix/100)
 obj.copybuffer("obj","tmp")
 obj.setoption("blend","none")
+
