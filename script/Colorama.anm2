@@ -1,4 +1,5 @@
---track@shift:Shift,-5000,5000,0,0.1
+--label:色調整
+--track@shift:Shift,-5000,5000,0,0.01
 --track@cycle:Cycle,1,50,1,1
 --track@step:Step,2,6,6,1
 --color@_c1:Color1,0xff0000
@@ -7,11 +8,10 @@
 --color@_c4:Color4,0x00ffff
 --color@_c5:Color5,0x0000ff
 --color@_c6:Color6,0xff00ff
---select@bmode:Blend Mode,none=0,add=1,sub=2,mul=3,screen=4,overlay=5,light=6,dark=7,brightness=8,chroma=9,shadow=10,light_dark=11,diff=12,alpha_add=20,alpha_max=21,alpha_sub=22,alpha_add2=25
 --select@lmode:Lum Mode,bt-601=0,bt-709=1,bt-2020=2,mean=3
---track@mix:mix,0,100,100,0.1
 --check@inv:Invert,0
---label:色調整
+--select@bmode:Blend Mode,none=0,add=1,sub=2,mul=3,screen=4,overlay=5,light=6,dark=7,brightness=8,chroma=9,shadow=10,light_dark=11,diff=12,alpha_add=20,alpha_max=21,alpha_sub=22,alpha_add2=25
+--track@mix:mix,0,100,100,0.1
 --[[pixelshader@psmain:
 Texture2D InputTexture : register(t0);
 cbuffer constant0 : register(b0) {
@@ -64,6 +64,109 @@ float4 psmain(float4 pos : SV_Position) : SV_Target {
 }
 ]]
 
+
+--[[pixelshader@psblend:
+Texture2D tex0 : register(t0);
+Texture2D tex1 : register(t1);
+cbuffer constant0 : register(b0) {
+    float mode; float mix;
+};
+
+float3 RGBtoYCbCr(float3 rgb) { // RGB(0~1 float3) -> YCbCr(YC48)
+    float R = rgb.r * 255.0;
+    float G = rgb.g * 255.0;
+    float B = rgb.b * 255.0;
+    float y  = (4918.0 * R + 354.0) / 1024.0
+             + (9655.0 * G + 585.0) / 1024.0
+             + (1875.0 * B + 523.0) / 1024.0;
+    float cb = (-2775.0 * R + 240.0) / 1024.0
+             + (-5449.0 * G + 515.0) / 1024.0
+             + ( 8224.0 * B + 256.0) / 1024.0;
+
+    float cr = ( 8224.0 * R + 256.0) / 1024.0
+             + (-6887.0 * G + 110.0) / 1024.0
+             + (-1337.0 * B + 646.0) / 1024.0;
+    return float3(y, cb, cr);
+}
+
+float3 YCbCrtoRGB(float3 ycbcr) // YCbCr(YC48) -> RGB(0~1 float3)
+{
+    float y  = ycbcr.x;
+    float cb = ycbcr.y;
+    float cr = ycbcr.z;
+    float R = (255.0 * y + ((22881.0 * cr / 65536.0 + 3.0) * 1024.0)) / 4096.0;
+    float G = (255.0 * y + (((-5616.0 * cb / 65536.0) + (-11655.0 * cr / 65536.0) + 3.0) * 1024.0)) / 4096.0;
+    float B = (255.0 * y + ((28919.0 * cb / 65536.0 + 3.0) * 1024.0)) / 4096.0;
+    return float3(R, G, B) / 255.0;
+}
+
+float4 psblend(float4 pos: SV_Position) : SV_target{
+    float4 t0=tex0[int2(pos.xy)];
+    float4 t1=tex1[int2(pos.xy)];
+    float3 c0=t0.rgb;
+    float3 c1=t1.rgb;
+    float3 outcol=c1;
+    float alpha=t1.a;
+    float3 yc0=RGBtoYCbCr(c0);
+    float3 yc1=RGBtoYCbCr(c1);
+    switch (uint(mode)) {
+        case 1: //add
+            outcol=c0+c1;
+            break;
+        case 2: //sub
+            outcol=c0-c1;
+            break;
+        case 3: //mult
+            outcol=c0*c1;
+            break;
+        case 4: //screen
+            outcol=1-((1-c0)*(1-c1));
+            break;
+        case 5: //overlay
+            outcol= c1<=0.5 ? 1-((1-c0)*(1-c1)) : c0*c1;
+            break;
+        case 6: //max
+            outcol=max(c0,c1);
+            break;
+        case 7: //min
+            outcol=min(c0,c1);
+            break;
+        case 8: //brightnesst
+            outcol=YCbCrtoRGB(float3(yc1.x,yc0.y,yc0.z));
+            break;
+        case 9: //chroma
+            outcol=YCbCrtoRGB(float3(yc0.x,yc1.y,yc1.z));
+            break;
+        case 10: //shadow
+            outcol=c0+c1-1;
+            break;
+        case 11: //light_dark
+            outcol=c0+c1*2-1;
+            break;
+        case 12: //diff
+            outcol=abs(c0-c1);
+            break;
+        case 20: //alpha_add
+            outcol=(c0+c1)/2;
+            alpha=t0.a+t1.a;
+            break;
+        case 21: //alpha_max
+            outcol.rgb=(c0+c1)/2;
+            alpha=max(t0.a,t1.a);
+            break;
+        case 22: //alpha_sub
+            outcol=(c0+c1)/2;
+            alpha=t0.a-t1.a;
+            break;
+        case 23: //alpha_add2
+            outcol=c0+c1;
+            break;
+
+    }
+    return t0*(1-mix)+float4(outcol,1)*alpha*mix;
+}
+]]
+
 local c={}
 c[1]=_c1
 c[2]=_c2
@@ -79,12 +182,10 @@ for i=1,6 do
 end
 local w,h=obj.getpixel()
 
-obj.copybuffer("tmp","obj")
+obj.copybuffer("cache:_Colorama_org","obj")
 if inv==1 then obj.effect("反転","輝度反転",1) end
 obj.pixelshader("psmain","object","object",{w,h,shift/100,cycle, r[1],g[1],b[1],0, r[2],g[2],b[2],0, r[3],g[3],b[3],0, r[4],g[4],b[4],0, r[5],g[5],b[5],0, r[6],g[6],b[6],0,step,lmode})
-obj.setoption("drawtarget","tmp")
-obj.setoption("blend",bmode)
-obj.draw(0,0,0,1,mix/100)
-obj.copybuffer("obj","tmp")
+obj.pixelshader("psblend","object",{"cache:_Colorama_org","object"},{bmode,mix/100})
 obj.setoption("blend","none")
+
 
