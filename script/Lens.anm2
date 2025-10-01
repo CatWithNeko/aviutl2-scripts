@@ -20,7 +20,7 @@ float4 psmain(float4 pos : SV_Position) : SV_Target {
 	float denom = 1-pow(r,p)*max(d,lim)*10;
     denom = max(denom, 0.001); //でかすぎると画面外に変なのが発生
 	float zoom = (d < lim) ? 1.0 + pow(max(-d +lim, 0.0),1.4) : 1.0; //歪みを小さくしすぎると破綻するので拡大でごまかす 下限をどこに設定すればいいかわからないからトラックバーに置いた
-    float2 distorted = centered/denom/zoom;h
+    float2 distorted = centered/denom/zoom;
     float2 texcoord = distorted+(resolution/2)+offset;
     return tex[int2(texcoord)];
 }
