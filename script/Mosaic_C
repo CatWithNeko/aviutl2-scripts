@@ -1,0 +1,16 @@
+--label:加工
+--track@size:Size,1,4000,1,1
+--track@sizeX:sizeX,0.001,1,1,0.001
+--track@sizeY:sizeY,0.001,1,1,0.001
+--[[pixelshader@psmain:
+Texture2D tex0 : register(t0);
+SamplerState smp0 : register(s0);
+cbuffer constant0 : register(b0) {float2 resolution;
+    float2 size;};
+float4 psmain(float4 pos : SV_Position,float2 UV : TEXCOORD0) : SV_Target {
+    float2 samplepos=clamp(floor((pos.xy-resolution.xy/2)/size)*size+resolution.xy/2+size/2,size/2,resolution-size/2);
+    return tex0.Sample(smp0,samplepos.xy/resolution.xy);
+}
+]]
+local w,h=obj.getpixel()
+obj.pixelshader("psmain","object","object",{w,h,size*sizeX,size*sizeY})
