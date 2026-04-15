@@ -1,0 +1,41 @@
+--label:色調整
+--track0:RGB[0-255],0,255,0,1
+--track1:R[0-255],0,255,0,1
+--track2:G[0-255],0,255,0,1
+--track3:B[0-255],0,255,0,1
+local ffi=require("ffi")
+local function clamp(x,min,max) return math.max(math.min(x,max),min) end
+local function get_lut(tra,track_mode)
+    local lut=ffi.new("uint8_t[256]")
+    if track_mode==0 then --移動なしの場合元の値をそのまま使う
+        for i=0,255 do
+            lut[i]=i
+        end
+    else
+        for i=0,255 do
+            lut[i]=clamp(obj.getvalue(tra,(obj.totaltime-(1/obj.framerate))*(i/255)),0,255)
+        end
+    end
+    return lut
+end
+local function mix_lut(lutX,lutY)
+    local final_lut=ffi.new("uint8_t[256]")
+    for i=0,255 do final_lut[i]=lutY[lutX[i]] end
+    return final_lut
+end
+local function apply_lut(p,lutR,lutG,lutB,w,h)
+    for i=0,w*h-1 do
+        p[i*4],p[i*4+1],p[i*4+2]=lutR[p[i*4]],lutG[p[i*4+1]],lutB[p[i*4+2]]
+    end
+end
+
+--トラックバーの値を読んでルックアップテーブルを作る
+local lut=get_lut(0,obj.getoption("track_mode",0))
+local lutR,lutG,lutB=get_lut(1,obj.getoption("track_mode",1)),get_lut(2,obj.getoption("track_mode",2)),get_lut(3,obj.getoption("track_mode",3))
+local finalLutR,finalLutG,finalLutB=mix_lut(lut,lutR),mix_lut(lut,lutG),mix_lut(lut,lutB)
+--データ取得
+local data,w,h=obj.getpixeldata("object")
+local p=ffi.cast("uint8_t*",data)
+--ルックアップテーブルの値をぶち込む
+apply_lut(p,finalLutR,finalLutG,finalLutB,w,h)
+obj.putpixeldata("object",data,w,h)
