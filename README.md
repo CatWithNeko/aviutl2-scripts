@@ -147,3 +147,5 @@ RGBのトラックバーを0~255に動かすことでかかる
 2025/8/25 SelfDisplace追加
 
 2025/8/28 Wave Warp追加
+
+2026/4/15 Tonecurve_C追加
