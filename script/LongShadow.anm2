@@ -41,10 +41,16 @@ float4 psmain(float4 pos : SV_Position) : SV_Target {
 --[[pixelshader@psmix:
 Texture2D t0 : register(t0);
 Texture2D t1 : register(t1);
+
+cbuffer constant0: register(b0) {
+    float2 offset;
+};
+
 float4 psmix(float4 pos : SV_Position) : SV_Target {
     float4 c0 = t0[uint2(pos.xy)];
-    float4 c1 = t1[uint2(pos.xy)];
-    return float4(c0*(1-c1.a)+c1);
+    float4 c1 = t1[uint2(pos.xy - offset)];
+    if (pos.x < offset.x || pos.y < offset.y) return c0;
+    else return float4(c0*(1-c1.a)+c1);
 }
 ]]
 
@@ -78,7 +84,7 @@ if (flat==1) then --この部分の実装はAodarumaさんのFlatShadow(https://
     end
 end
 
-if (shadowOnly==0) then obj.pixelshader("psmix","object",{"object","cache:_longshadow_org"}) end
+if (shadowOnly==0) then obj.pixelshader("psmix","object",{"object","cache:_longshadow_org"}, {left, up}) end
 
 obj.cx=obj.cx+(left-right)/2
 obj.cy=obj.cy+(up-down)/2
