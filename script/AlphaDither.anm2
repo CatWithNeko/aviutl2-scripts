@@ -1,0 +1,18 @@
+--information:AlphaDither v1.00 by CatWithNeko
+--label:抽出
+--track@alpha:Alpha,0,100,100,0.01
+--track@size:Size,1,1000,1,1
+--track@seed:Seed,0,4000,0,1
+--[[pixelshader@psmain:
+Texture2D tex0 : register(t0);
+cbuffer constant0 : register(b0) {float2 resolution;float size;float alpha;float seed;};
+float4 psmain(float4 pos : SV_Position,float2 UV : TEXCOORD0) : SV_Target {
+    int2 gridpos=int2((pos.xy-resolution/2)/size);
+    float rand=float(frac(sin(dot(gridpos, float2(12.9898, 78.233)) + seed * 437.585) * 43758.5453123));;
+    float4 ta=tex0[pos.xy];
+    return rand<tex0[gridpos*size+resolution/2].a*alpha ? float4(ta.rgb/ta.a,1):0;
+}
+]]
+
+local w,h=obj.getpixel()
+obj.pixelshader("psmain","object","object",{w,h,size,alpha/100,seed})
